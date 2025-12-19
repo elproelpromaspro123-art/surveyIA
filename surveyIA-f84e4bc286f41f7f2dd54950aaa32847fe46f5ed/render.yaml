@@ -1,0 +1,24 @@
+services:
+  - type: web
+    name: surveyia
+    runtime: node
+    plan: free
+    buildCommand: npm install && npm run build
+    startCommand: node script/init-db.mjs && npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: surveyia-postgres
+          property: connectionString
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+
+databases:
+  - name: surveyia-postgres
+    plan: free
