@@ -2,11 +2,14 @@ import { GoogleGenAI } from "@google/genai";
 import { log } from "./index";
 
 // Gemini API configuration with fallback models - ordered by capability (per Dec 2025 docs)
+// All models listed are FREE TIER eligible (as of December 19, 2025)
+// Verified at: https://ai.google.dev/gemini-api/docs/pricing
 const GEMINI_MODELS = [
-  "gemini-2-pro-exp-12-05",      // Gemini 2.5 Pro with advanced thinking
-  "gemini-2.5-flash",             // Gemini 2.5 Flash - fast & capable with thinking
-  "gemini-2.5-flash-lite",        // Gemini 2.5 Flash Lite - ultra fast
-  "gemini-1.5-pro",               // Gemini 1.5 Pro fallback
+  "gemini-3-flash-preview",       // OPTIMAL: Latest Gen 3 Flash - FREE, fastest, includes thinking
+  "gemini-2.5-flash",             // Gemini 2.5 Flash - FREE, 1M context, hybrid reasoning with thinking
+  "gemini-2.5-pro",               // Gemini 2.5 Pro - FREE tier, advanced reasoning
+  "gemini-2.5-flash-lite",        // Gemini 2.5 Flash Lite - FREE, most cost-efficient
+  "gemini-2.0-flash",             // Gemini 2.0 Flash - FREE, 1M context window, multimodal
 ] as const;
 
 type GeminiModel = (typeof GEMINI_MODELS)[number];
@@ -89,6 +92,7 @@ export async function generateGeminiResponse(
       });
 
       // Build request config with MAXIMUM capabilities (per official Gemini docs 2025)
+      // Extended parameters for optimal reasoning and generation
       const requestConfig: any = {
         model,
         contents: [
@@ -105,30 +109,44 @@ export async function generateGeminiResponse(
         },
       };
 
-      // Configure thinking - supports Gemini 2.5 & 1.5
-      // For Gemini 2.5: use budgetTokens (token limit for thinking)
-      // Thinking improves reasoning, coding, math, data analysis
+      // Configure thinking for ALL supported models (Gemini 3, 2.5, 2.0)
+      // Uses budgetTokens to control thinking depth
+      // Thinking capability significantly improves reasoning, coding, math, data analysis
+      // https://ai.google.dev/gemini-api/docs/thinking
       if (request.includeThinking) {
         requestConfig.thinking = {
           type: "ENABLED",
-          budgetTokens: 10000, // Optimal budget for high-quality reasoning
+          budgetTokens: 15000, // Increased budget for complex reasoning tasks
         };
       }
 
-      // Add ALL tools for MAXIMUM capabilities
+      // Configure ALL available tools for MAXIMUM capabilities
+      // Source: https://ai.google.dev/gemini-api/docs/tools
+      // FREE TIER SUPPORT (as of December 19, 2025):
+      // - Google Search: 500 RPD free (shared limit for Flash/Flash-Lite)
+      // - Code Execution: FREE unlimited
+      // - Google Maps: 500 RPD free (shared limit for Flash/Flash-Lite)
+      // - URL Context: FREE unlimited
+      // - File Search: FREE unlimited (embeddings charged separately)
       const tools: any[] = [
-        { googleSearchRetrieval: {} },      // Real-time web data
-        { codeExecution: {} },              // Complex math & analysis
+        // 1. Google Search - Ground responses in current events and facts from the web
+        // Reduces hallucinations, perfect for real-time information
+        { googleSearchRetrieval: {} },
+        
+        // 2. Code Execution - Write and run Python code for exact calculations
+        // Excellent for math problems, data processing, analysis
+        { codeExecution: {} },
+        
+        // 3. Google Maps - Location-aware assistance
+        // Find places, directions, local context (available for all models)
+        { googleMaps: {} },
       ];
 
-      // All models get access to geospatial tools
-      if (model.includes("pro") || model.includes("3")) {
-        tools.push({ googleMaps: {} });     // Advanced geospatial analysis
-      }
-
       requestConfig.tools = tools;
+      // Use "ANY" mode to allow model to choose when to use tools
+      // This gives maximum flexibility for complex reasoning
       requestConfig.toolConfig = {
-        functionCallingConfig: { mode: "ANY" },  // Aggressive tool use
+        functionCallingConfig: { mode: "ANY" },
       };
 
       const response = await client.models.generateContent(requestConfig);
@@ -223,23 +241,20 @@ export async function* streamGeminiResponse(
         },
       };
 
-      // Configure thinking for streaming (Gemini 2.5 & 1.5)
+      // Configure thinking for streaming (all supported models)
       if (request.includeThinking) {
         requestConfig.thinking = {
           type: "ENABLED",
-          budgetTokens: 10000,
+          budgetTokens: 15000,
         };
       }
 
-      // All tools enabled for maximum capability
+      // All tools enabled for maximum streaming capability
       const tools: any[] = [
         { googleSearchRetrieval: {} },
         { codeExecution: {} },
+        { googleMaps: {} },
       ];
-
-      if (model.includes("pro") || model.includes("3")) {
-        tools.push({ googleMaps: {} });
-      }
 
       requestConfig.tools = tools;
       requestConfig.toolConfig = {
