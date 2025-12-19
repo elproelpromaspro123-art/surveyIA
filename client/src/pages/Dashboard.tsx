@@ -89,12 +89,19 @@ export default function Dashboard() {
       <main className="md:ml-64 p-4 md:p-8 lg:p-12 pb-24">
         <div className="max-w-4xl mx-auto space-y-8">
           
-          <header className="mb-8">
-            <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl bg-clip-text text-transparent bg-gradient-to-r from-primary via-white to-secondary">
-              Survey Response Generator
-            </h2>
-            <p className="mt-4 text-muted-foreground text-lg">
-              AI-powered intelligent survey responses based on your digital profile. Concise, reasoned, and authentic.
+          <header className="mb-12">
+            <div className="mb-6 flex items-center gap-3">
+              <div className="h-10 w-1 bg-gradient-to-b from-primary to-secondary rounded-full" />
+              <div>
+                <p className="text-sm font-bold text-primary uppercase tracking-widest">Powered by Gemini 2.5</p>
+                <p className="text-xs text-muted-foreground">Maximum intelligence mode</p>
+              </div>
+            </div>
+            <h1 className="text-5xl sm:text-6xl font-bold tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-primary via-white to-secondary mb-4 leading-tight">
+              Expert Survey Responses
+            </h1>
+            <p className="text-lg text-muted-foreground leading-relaxed max-w-2xl">
+              Advanced AI with deep reasoning, web search, code analysis, and geospatial understanding. Get expertly analyzed responses aligned with your digital profile and values.
             </p>
           </header>
 

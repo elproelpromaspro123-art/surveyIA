@@ -52,6 +52,15 @@ export async function registerRoutes(
 ): Promise<void> {
   console.log("Starting to register routes...");
 
+  // Extend Express Request to include userId
+  declare global {
+    namespace Express {
+      interface Request {
+        userId?: string | number;
+      }
+    }
+  }
+
   // ==================== AUTH ROUTES ====================
 
   /**

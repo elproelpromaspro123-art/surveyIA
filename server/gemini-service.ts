@@ -1,12 +1,12 @@
 import { GoogleGenAI } from "@google/genai";
 import { log } from "./index";
 
-// Gemini API configuration with fallback models - ordered by capability
+// Gemini API configuration with fallback models - ordered by capability (per Dec 2025 docs)
 const GEMINI_MODELS = [
-  "gemini-3-flash-preview",    // Most intelligent - All tools
-  "gemini-2.5-pro",             // Advanced thinking - All tools + Maps
-  "gemini-2.5-flash",           // Best price-performance - All tools
-  "gemini-2.5-flash-lite",      // Ultra fast - All tools, optimized
+  "gemini-2-pro-exp-12-05",      // Gemini 2.5 Pro with advanced thinking
+  "gemini-2.5-flash",             // Gemini 2.5 Flash - fast & capable with thinking
+  "gemini-2.5-flash-lite",        // Gemini 2.5 Flash Lite - ultra fast
+  "gemini-1.5-pro",               // Gemini 1.5 Pro fallback
 ] as const;
 
 type GeminiModel = (typeof GEMINI_MODELS)[number];
@@ -88,7 +88,7 @@ export async function generateGeminiResponse(
         text: finalPrompt,
       });
 
-      // Build request config with MAXIMUM capabilities
+      // Build request config with MAXIMUM capabilities (per official Gemini docs 2025)
       const requestConfig: any = {
         model,
         contents: [
@@ -98,18 +98,22 @@ export async function generateGeminiResponse(
           },
         ],
         generationConfig: {
-          temperature: request.temperature ?? 0.85, // Maximum creativity & exploration
-          maxOutputTokens: request.maxTokens ?? 8000, // Maximum output for comprehensive responses
-          topP: 0.99, // Maximum diversity
-          topK: 50, // Broader token selection
+          temperature: request.temperature ?? 0.85,
+          maxOutputTokens: request.maxTokens ?? 8000,
+          topP: 0.99,
+          topK: 50,
         },
       };
 
-      // ALWAYS use MAXIMUM thinking budget for deep analysis
-      requestConfig.thinking = {
-        type: "ENABLED",
-        budgetTokens: 20000, // Maximum thinking budget for expert-level reasoning
-      };
+      // Configure thinking - supports Gemini 2.5 & 1.5
+      // For Gemini 2.5: use budgetTokens (token limit for thinking)
+      // Thinking improves reasoning, coding, math, data analysis
+      if (request.includeThinking) {
+        requestConfig.thinking = {
+          type: "ENABLED",
+          budgetTokens: 10000, // Optimal budget for high-quality reasoning
+        };
+      }
 
       // Add ALL tools for MAXIMUM capabilities
       const tools: any[] = [
@@ -212,18 +216,20 @@ export async function* streamGeminiResponse(
         model,
         contents: [{ role: "user", parts }],
         generationConfig: {
-          temperature: request.temperature ?? 0.85, // Maximum creativity
-          maxOutputTokens: request.maxTokens ?? 8000, // Maximum output
+          temperature: request.temperature ?? 0.85,
+          maxOutputTokens: request.maxTokens ?? 8000,
           topP: 0.99,
           topK: 50,
         },
       };
 
-      // ALWAYS use MAXIMUM thinking for streaming
-      requestConfig.thinking = {
-        type: "ENABLED",
-        budgetTokens: 20000, // Maximum thinking budget
-      };
+      // Configure thinking for streaming (Gemini 2.5 & 1.5)
+      if (request.includeThinking) {
+        requestConfig.thinking = {
+          type: "ENABLED",
+          budgetTokens: 10000,
+        };
+      }
 
       // All tools enabled for maximum capability
       const tools: any[] = [
