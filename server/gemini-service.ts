@@ -88,7 +88,7 @@ export async function generateGeminiResponse(
         text: finalPrompt,
       });
 
-      // Build request config with thinking support
+      // Build request config with MAXIMUM capabilities
       const requestConfig: any = {
         model,
         contents: [
@@ -98,34 +98,33 @@ export async function generateGeminiResponse(
           },
         ],
         generationConfig: {
-          temperature: request.temperature ?? 0.7,
-          maxOutputTokens: request.maxTokens ?? 2000,
+          temperature: request.temperature ?? 0.85, // Maximum creativity & exploration
+          maxOutputTokens: request.maxTokens ?? 8000, // Maximum output for comprehensive responses
+          topP: 0.99, // Maximum diversity
+          topK: 50, // Broader token selection
         },
       };
 
-      // Add thinking config if requested and model supports it
-      if (request.includeThinking) {
-        // All current models support thinking (2.0-flash has experimental)
-        requestConfig.thinking = {
-          type: "ENABLED",
-          budgetTokens: 5000,
-        };
-      }
+      // ALWAYS use MAXIMUM thinking budget for deep analysis
+      requestConfig.thinking = {
+        type: "ENABLED",
+        budgetTokens: 20000, // Maximum thinking budget for expert-level reasoning
+      };
 
-      // Add ALL available tools for enhanced responses
+      // Add ALL tools for MAXIMUM capabilities
       const tools: any[] = [
-        { googleSearchRetrieval: {} },    // Web search for current data
-        { codeExecution: {} },             // Math & logical analysis
+        { googleSearchRetrieval: {} },      // Real-time web data
+        { codeExecution: {} },              // Complex math & analysis
       ];
 
-      // Add Google Maps for Pro models
-      if (model.includes("pro")) {
-        tools.push({ googleMaps: {} });   // Geospatial data when needed
+      // All models get access to geospatial tools
+      if (model.includes("pro") || model.includes("3")) {
+        tools.push({ googleMaps: {} });     // Advanced geospatial analysis
       }
 
       requestConfig.tools = tools;
       requestConfig.toolConfig = {
-        functionCallingConfig: { mode: "AUTO" },  // Auto-use tools when beneficial
+        functionCallingConfig: { mode: "ANY" },  // Aggressive tool use
       };
 
       const response = await client.models.generateContent(requestConfig);
@@ -213,33 +212,32 @@ export async function* streamGeminiResponse(
         model,
         contents: [{ role: "user", parts }],
         generationConfig: {
-          temperature: request.temperature ?? 0.7,
-          maxOutputTokens: request.maxTokens ?? 2000,
+          temperature: request.temperature ?? 0.85, // Maximum creativity
+          maxOutputTokens: request.maxTokens ?? 8000, // Maximum output
+          topP: 0.99,
+          topK: 50,
         },
       };
 
-      if (request.includeThinking) {
-        // All current models support thinking
-        requestConfig.thinking = {
-          type: "ENABLED",
-          budgetTokens: 5000,
-        };
-      }
+      // ALWAYS use MAXIMUM thinking for streaming
+      requestConfig.thinking = {
+        type: "ENABLED",
+        budgetTokens: 20000, // Maximum thinking budget
+      };
 
-      // Add ALL available tools for enhanced responses
+      // All tools enabled for maximum capability
       const tools: any[] = [
-        { googleSearchRetrieval: {} },    // Web search for current data
-        { codeExecution: {} },             // Math & logical analysis
+        { googleSearchRetrieval: {} },
+        { codeExecution: {} },
       ];
 
-      // Add Google Maps for Pro models
-      if (model.includes("pro")) {
-        tools.push({ googleMaps: {} });   // Geospatial data when needed
+      if (model.includes("pro") || model.includes("3")) {
+        tools.push({ googleMaps: {} });
       }
 
       requestConfig.tools = tools;
       requestConfig.toolConfig = {
-        functionCallingConfig: { mode: "AUTO" },  // Auto-use tools when beneficial
+        functionCallingConfig: { mode: "ANY" },
       };
 
       const stream = await client.models.generateContentStream(requestConfig);

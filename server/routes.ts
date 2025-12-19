@@ -36,9 +36,9 @@ async function generateSurveyResponse(
   const response = await generateGeminiResponse({
     userPrompt: question,
     systemPrompt,
-    includeThinking: true, // Always enable thinking for optimal responses
-    temperature: 0.2, // Very low temp for precise, concise responses
-    maxTokens: 1500, // Optimized for concise but thorough answers
+    includeThinking: true, // Always enable maximum thinking
+    temperature: 0.85, // High temperature for expert-level analysis
+    maxTokens: 8000, // Maximum tokens for comprehensive responses
   });
 
   return response;
