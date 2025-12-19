@@ -5,12 +5,21 @@ import { log } from "./index";
 // All models listed are FREE TIER eligible (as of December 19, 2025)
 // Verified at: https://ai.google.dev/gemini-api/docs/pricing
 const GEMINI_MODELS = [
-  "gemini-3-flash-preview",       // OPTIMAL: Latest Gen 3 Flash - FREE, fastest, includes thinking
+  "gemini-3-flash-preview",       // OPTIMAL: Latest Gen 3 Flash - FREE, fastest, superior intelligence
   "gemini-2.5-flash",             // Gemini 2.5 Flash - FREE, 1M context, hybrid reasoning with thinking
-  "gemini-2.5-pro",               // Gemini 2.5 Pro - FREE tier, advanced reasoning
-  "gemini-2.5-flash-lite",        // Gemini 2.5 Flash Lite - FREE, most cost-efficient
+  "gemini-2.5-pro",               // Gemini 2.5 Pro - FREE tier, advanced reasoning for complex tasks
+  "gemini-2.5-flash-lite",        // Gemini 2.5 Flash Lite - FREE, ultra-fast, cost-efficient
   "gemini-2.0-flash",             // Gemini 2.0 Flash - FREE, 1M context window, multimodal
 ] as const;
+
+// Rate limit tracking for models
+interface RateLimitInfo {
+  model: string;
+  nextAvailableTime: number;
+  retryAfterSeconds?: number;
+}
+
+const rateLimitTracker: Map<string, RateLimitInfo> = new Map();
 
 type GeminiModel = (typeof GEMINI_MODELS)[number];
 
@@ -173,6 +182,9 @@ export async function generateGeminiResponse(
         }
       }
 
+      // Clear rate limit on success
+      rateLimitTracker.delete(model);
+
       log(`Successfully generated response with ${model}`, "gemini-service");
 
       return {
@@ -185,6 +197,25 @@ export async function generateGeminiResponse(
         },
       };
     } catch (error: any) {
+      // Handle rate limit errors
+      if (error?.response?.status === 429) {
+        const retryAfter = error?.response?.headers?.["retry-after"];
+        const retrySeconds = retryAfter
+          ? parseInt(retryAfter) * 1000
+          : 60000; // Default to 60 seconds
+
+        rateLimitTracker.set(model, {
+          model,
+          nextAvailableTime: Date.now() + retrySeconds,
+          retryAfterSeconds: Math.ceil(retrySeconds / 1000),
+        });
+
+        log(
+          `Model ${model} rate limited for ${Math.ceil(retrySeconds / 1000)} seconds`,
+          "gemini-service"
+        );
+      }
+
       log(
         `Model ${model} failed: ${error.message || "Unknown error"}`,
         "gemini-service"
@@ -283,10 +314,63 @@ export async function* streamGeminiResponse(
   throw lastError || new Error("All streaming models failed");
 }
 
+/**
+ * Get available models and rate limit information
+ */
+export function getAvailableModels(): {
+  available: GeminiModel[];
+  rateLimited: RateLimitInfo[];
+} {
+  const available: GeminiModel[] = [];
+  const rateLimited: RateLimitInfo[] = [];
+  const now = Date.now();
+
+  for (const model of GEMINI_MODELS) {
+    const limitInfo = rateLimitTracker.get(model);
+    if (limitInfo && limitInfo.nextAvailableTime > now) {
+      rateLimited.push(limitInfo);
+    } else {
+      available.push(model);
+    }
+  }
+
+  return { available, rateLimited };
+}
+
+/**
+ * Check model status and return time until available
+ */
+export function getModelStatus(): {
+  hasAvailableModels: boolean;
+  primaryModel: GeminiModel | null;
+  minutesUntilAvailable?: number;
+} {
+  const { available, rateLimited } = getAvailableModels();
+
+  if (available.length > 0) {
+    return {
+      hasAvailableModels: true,
+      primaryModel: available[0],
+    };
+  }
+
+  // All models are rate limited
+  const soonestModel = rateLimited.reduce((prev, curr) =>
+    prev.nextAvailableTime < curr.nextAvailableTime ? prev : curr
+  );
+
+  const minutesUntilAvailable = Math.ceil(
+    (soonestModel.nextAvailableTime - Date.now()) / 60000
+  );
+
+  return {
+    hasAvailableModels: false,
+    primaryModel: null,
+    minutesUntilAvailable: Math.max(1, minutesUntilAvailable),
+  };
+}
+
 export function isValidGeminiModel(model: string): model is GeminiModel {
   return GEMINI_MODELS.includes(model as GeminiModel);
 }
 
-export function getAvailableModels(): readonly GeminiModel[] {
-  return GEMINI_MODELS;
-}

@@ -1,4 +1,4 @@
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { api } from "@shared/routes";
 import { z } from "zod";
 
@@ -24,5 +24,18 @@ export function useGenerateSurveyResponse() {
       
       return api.survey.generate.responses[200].parse(await res.json());
     },
+  });
+}
+
+export function useModelStatus() {
+  return useQuery({
+    queryKey: ["modelStatus"],
+    queryFn: async () => {
+      const res = await fetch("/api/survey/models");
+      if (!res.ok) throw new Error("Failed to fetch model status");
+      return res.json();
+    },
+    refetchInterval: 2000, // Update every 2 seconds
+    staleTime: 1000,
   });
 }

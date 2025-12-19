@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { storage } from "@shared/storage";
 import { api } from "@shared/routes";
 import { z } from "zod";
-import { generateGeminiResponse, streamGeminiResponse, getAvailableModels } from "./gemini-service";
+import { generateGeminiResponse, streamGeminiResponse, getAvailableModels, getModelStatus } from "./gemini-service";
 import { getSystemPrompt, t, type Language } from "./prompts-i18n";
 import { getUserIP, canCreateAccountFromIP, createAuthSession, getAuthSessionByIP, validateGoogleToken, requireAuthMiddleware, clearAuthSession } from "./auth-service";
 
@@ -413,12 +413,28 @@ export async function registerRoutes(
 
   /**
     * GET /api/survey/models
-    * Get list of available Gemini models
+    * Get list of available Gemini models and rate limit status
     */
   app.get("/api/survey/models", (_req, res) => {
+    const modelStatus = getModelStatus();
+    const { available, rateLimited } = getAvailableModels();
+
     res.json({
-      models: getAvailableModels(),
-      description: "Available Gemini models with automatic fallback",
+      available,
+      rateLimited: rateLimited.map((info) => ({
+        model: info.model,
+        minutesUntilAvailable: Math.ceil(
+          (info.nextAvailableTime - Date.now()) / 60000
+        ),
+        secondsUntilAvailable: Math.ceil(
+          (info.nextAvailableTime - Date.now()) / 1000
+        ),
+      })),
+      status: {
+        hasAvailableModels: modelStatus.hasAvailableModels,
+        primaryModel: modelStatus.primaryModel,
+        minutesUntilAvailable: modelStatus.minutesUntilAvailable,
+      },
     });
   });
 
