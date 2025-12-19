@@ -112,18 +112,21 @@ export async function generateGeminiResponse(
         };
       }
 
-      // Add tools based on model capabilities - all current models have these tools
+      // Add ALL available tools for enhanced responses
       const tools: any[] = [
-        { googleSearchRetrieval: {} },
-        { codeExecution: {} },
+        { googleSearchRetrieval: {} },    // Web search for current data
+        { codeExecution: {} },             // Math & logical analysis
       ];
 
-      // Add Google Maps for Pro models (if supported)
+      // Add Google Maps for Pro models
       if (model.includes("pro")) {
-        tools.push({ googleMaps: {} });
+        tools.push({ googleMaps: {} });   // Geospatial data when needed
       }
 
       requestConfig.tools = tools;
+      requestConfig.toolConfig = {
+        functionCallingConfig: { mode: "AUTO" },  // Auto-use tools when beneficial
+      };
 
       const response = await client.models.generateContent(requestConfig);
 
@@ -223,18 +226,21 @@ export async function* streamGeminiResponse(
         };
       }
 
-      // Add tools based on model capabilities - all current models have these tools
+      // Add ALL available tools for enhanced responses
       const tools: any[] = [
-        { googleSearchRetrieval: {} },
-        { codeExecution: {} },
+        { googleSearchRetrieval: {} },    // Web search for current data
+        { codeExecution: {} },             // Math & logical analysis
       ];
 
       // Add Google Maps for Pro models
       if (model.includes("pro")) {
-        tools.push({ googleMaps: {} });
+        tools.push({ googleMaps: {} });   // Geospatial data when needed
       }
 
       requestConfig.tools = tools;
+      requestConfig.toolConfig = {
+        functionCallingConfig: { mode: "AUTO" },  // Auto-use tools when beneficial
+      };
 
       const stream = await client.models.generateContentStream(requestConfig);
 

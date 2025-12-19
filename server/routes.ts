@@ -34,11 +34,11 @@ async function generateSurveyResponse(
   const systemPrompt = getSystemPrompt(userProfile, language);
 
   const response = await generateGeminiResponse({
-    userPrompt: `Pregunta: ${question}`,
+    userPrompt: question,
     systemPrompt,
-    includeThinking: true, // Always enable thinking for optimal survey responses
-    temperature: 0.3, // Lower temperature for more consistent, strategic responses
-    maxTokens: 2500, // Allow more tokens for detailed analysis
+    includeThinking: true, // Always enable thinking for optimal responses
+    temperature: 0.2, // Very low temp for precise, concise responses
+    maxTokens: 1500, // Optimized for concise but thorough answers
   });
 
   return response;

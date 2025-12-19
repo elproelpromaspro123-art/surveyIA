@@ -90,11 +90,11 @@ export default function Dashboard() {
         <div className="max-w-4xl mx-auto space-y-8">
           
           <header className="mb-8">
-            <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl bg-clip-text text-transparent bg-gradient-to-r from-white via-white to-white/50">
-              Generate Response
+            <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl bg-clip-text text-transparent bg-gradient-to-r from-primary via-white to-secondary">
+              Survey Response Generator
             </h2>
             <p className="mt-4 text-muted-foreground text-lg">
-              Let AI answer survey questions based on your digital persona.
+              AI-powered intelligent survey responses based on your digital profile. Concise, reasoned, and authentic.
             </p>
           </header>
 
