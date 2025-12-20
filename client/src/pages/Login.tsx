@@ -249,13 +249,13 @@ export default function Login() {
         </div>
 
         {/* Card */}
-        <div className="glass-card rounded-2xl p-8 border border-white/10 space-y-8">
+        <div className="glass-card rounded-2xl p-8 border border-white/10 space-y-8 shadow-xl">
           {/* Google OAuth */}
           <div>
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">
               Opción rápida
             </p>
-            <div id="google-signin-button" className="flex justify-center" />
+            <div id="google-signin-button" className="flex justify-center" aria-label="Google sign in" />
           </div>
 
           {/* Divider */}

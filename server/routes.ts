@@ -4,6 +4,7 @@ import { api } from "@shared/routes";
 import { z } from "zod";
 import { generateGeminiResponse, streamGeminiResponse, getAvailableModels, getModelStatus } from "./gemini-service";
 import { generateCloudflareResponse, streamCloudflareResponse } from "./cloudflare-service";
+import { handleToolCall } from "./tool-handlers";
 import { getSystemPrompt, t, type Language } from "./prompts-i18n";
 import { getUserIP, canCreateAccountFromIP, createAuthSession, getAuthSessionByIP, validateGoogleToken, requireAuthMiddleware, clearAuthSession } from "./auth-service";
 
@@ -512,10 +513,34 @@ export async function registerRoutes(
       res.setHeader("Content-Type", "text/event-stream");
       res.setHeader("Cache-Control", "no-cache");
       res.setHeader("Connection", "keep-alive");
-
       const send = (data: string) => {
-        res.write(`data: ${JSON.stringify(data)}\n\n`);
+        try {
+          res.write(`data: ${JSON.stringify(data)}\n\n`);
+          lastActivity = Date.now();
+        } catch (e) {
+          // ignore write errors
+        }
       };
+
+      // Heartbeat to keep connection alive for proxies; send a comment line every 15s
+      const hb = setInterval(() => {
+        try {
+          res.write(`: heartbeat\n\n`);
+        } catch (e) {}
+      }, 15000);
+
+      // Idle timeout: close after 3 minutes of inactivity
+      let lastActivity = Date.now();
+      const idleCheck = setInterval(() => {
+        if (Date.now() - lastActivity > 1000 * 60 * 3) {
+          try {
+            res.write(`data: ${JSON.stringify('[DONE]')}\n\n`);
+          } catch (e) {}
+          clearInterval(hb);
+          clearInterval(idleCheck);
+          try { res.end(); } catch (e) {}
+        }
+      }, 10000);
 
       // If image -> prefer Cloudflare multimodal
       if ((user as any).image) {
@@ -528,7 +553,38 @@ export async function registerRoutes(
           imageData: (user as any).image,
         });
 
+        let sawTool = false;
         for await (const chunk of stream) {
+          // attempt to parse structured tool call
+          try {
+            const parsed = typeof chunk === "string" && chunk.trim().startsWith("{") ? JSON.parse(chunk) : null;
+            if (parsed && (parsed.tool_call || parsed.function_call || parsed.name)) {
+              // Normalize
+              const call = parsed.tool_call || parsed.function_call || parsed;
+              const name = call.name || call.tool || parsed.name;
+              const args = call.arguments || call.args || call.params || {};
+              sawTool = true;
+              send(`[TOOL_CALL] ${name}`);
+              // Execute handler
+              const result = await handleToolCall(name, args);
+              send(`[TOOL_RESULT_BEGIN] ${name}`);
+              send(result);
+              send(`[TOOL_RESULT_END] ${name}`);
+              // After tool execution, call model again to finish the response with tool context
+              const follow = await generateCloudflareResponse({
+                prompt: `${getSystemPrompt(user, language)}\n\n${question}\n\nTool ${name} result:\n${result}`,
+                model: "@cf/meta/llama-4-scout-17b-16e-instruct",
+                temperature: 0.15,
+                maxTokens: 8000,
+                includeThinking: includeThinking === true,
+                imageData: (user as any).image,
+              });
+              send(follow.text);
+              continue;
+            }
+          } catch (e) {
+            // fall back to raw chunk
+          }
           send(chunk);
         }
 
@@ -547,6 +603,31 @@ export async function registerRoutes(
         });
 
         for await (const chunk of stream) {
+          try {
+            const parsed = typeof chunk === "string" && chunk.trim().startsWith("{") ? JSON.parse(chunk) : null;
+            if (parsed && (parsed.tool_call || parsed.function_call || parsed.name)) {
+              const call = parsed.tool_call || parsed.function_call || parsed;
+              const name = call.name || call.tool || parsed.name;
+              const args = call.arguments || call.args || call.params || {};
+              send(`[TOOL_CALL] ${name}`);
+              const result = await handleToolCall(name, args);
+              send(`[TOOL_RESULT_BEGIN] ${name}`);
+              send(result);
+              send(`[TOOL_RESULT_END] ${name}`);
+              // Query model again to finish answer with tool context
+              const follow = await generateCloudflareResponse({
+                prompt: `${getSystemPrompt(user, language)}\n\n${question}\n\nTool ${name} result:\n${result}`,
+                model: "@cf/openai/gpt-oss-120b",
+                temperature: 0.2,
+                maxTokens: 8000,
+                includeThinking: includeThinking === true,
+              });
+              send(follow.text);
+              continue;
+            }
+          } catch (e) {
+            // fall through and send raw chunk
+          }
           send(chunk);
         }
 

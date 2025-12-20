@@ -39,7 +39,7 @@ export function Navigation() {
     .slice(0, 2) || "U";
 
   return (
-    <aside className="w-64 glass-card h-screen fixed left-0 top-0 border-r border-white/10 hidden md:flex flex-col p-6 z-50">
+    <aside role="navigation" aria-label="Main navigation" className="w-64 glass-card h-screen fixed left-0 top-0 border-r border-white/10 hidden md:flex flex-col p-6 z-50">
       <div className="flex items-center gap-3 mb-10">
         <div className="p-2 bg-primary/20 rounded-lg border border-primary/30">
           <BrainCircuit className="w-8 h-8 text-primary neon-text" />
@@ -62,6 +62,8 @@ export function Navigation() {
                     ? "bg-primary/20 text-primary border border-primary/20 shadow-lg shadow-primary/10"
                     : "text-muted-foreground hover:text-white hover:bg-white/5"
                 )}
+                role="link"
+                aria-current={isActive ? "page" : undefined}
               >
                 <Icon className={clsx("w-5 h-5 transition-colors", isActive ? "text-primary" : "group-hover:text-white")} />
                 <span className="font-medium">{link.label}</span>
