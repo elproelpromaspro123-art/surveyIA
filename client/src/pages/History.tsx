@@ -6,7 +6,7 @@ import { useToast } from "@/hooks/use-toast";
 import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
 import { motion } from "framer-motion";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 interface SurveyResponse {
   id: number;
@@ -34,6 +34,15 @@ export default function History() {
     staleTime: 1 * 60 * 1000,
     enabled: !!userId,
   });
+
+  // Merge server history with localStorage fallback (localStorage wins when present)
+  const localKey = userId ? `surveyia_history_user_${userId}` : null;
+  let localResponses: any[] = [];
+  try {
+    if (localKey) localResponses = JSON.parse(localStorage.getItem(localKey) || "[]");
+  } catch (e) {
+    localResponses = [];
+  }
 
   const handleClearHistory = async () => {
     if (!confirm("¿Estás seguro de que quieres borrar todo el historial? Esta acción no se puede deshacer.")) {
@@ -106,8 +115,27 @@ export default function History() {
     );
   }
 
-  const responses = historyData?.responses || [];
+  // Use local responses when available, otherwise fall back to server responses.
+  const serverResponses = historyData?.responses || [];
+  const responses = localResponses.length > 0 ? localResponses : serverResponses.map((r: any, i: number) => ({
+    id: r.id || (Date.now() + i),
+    question: r.question,
+    answer: r.answer,
+    modelUsed: r.modelUsed,
+    status: r.status || 'completed',
+    createdAt: r.createdAt || new Date().toISOString(),
+  }));
   const isEmpty = responses.length === 0;
+
+  // Auto-open item via URL param ?open=<id>
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const openParam = params.get('open');
+    if (openParam) {
+      const idNum = Number(openParam);
+      if (!Number.isNaN(idNum)) setExpandedId(idNum);
+    }
+  }, []);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-foreground font-sans">
@@ -269,11 +297,29 @@ export default function History() {
               transition={{ duration: 0.5, delay: 0.2 }}
               className="grid md:grid-cols-3 gap-4"
             >
-              {[
-                { icon: "📊", label: "Total Responses", value: responses.length },
-                { icon: "✅", label: "Successful", value: responses.filter((r: any) => r.status === 'completed').length },
-                { icon: "📅", label: "Time Span", value: `${Math.floor(Math.random() * 30) + 1} days` },
-              ].map((stat, i) => (
+              {(() => {
+                  const total = responses.length;
+                  const successful = responses.filter((r: any) => r.status === 'completed').length;
+                  // compute time span in days
+                  let timeSpan = '0 days';
+                  try {
+                    const dates = responses.map((r: any) => new Date(r.createdAt).getTime()).filter(Boolean).sort();
+                    if (dates.length >= 2) {
+                      const diffMs = Math.abs(dates[dates.length - 1] - dates[0]);
+                      const diffDays = Math.max(1, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
+                      timeSpan = `${diffDays} days`;
+                    } else if (dates.length === 1) {
+                      timeSpan = `1 day`;
+                    }
+                  } catch (e) {
+                    timeSpan = 'N/A';
+                  }
+
+                  return [
+                    { icon: "📊", label: "Total Responses", value: total },
+                    { icon: "✅", label: "Successful", value: successful },
+                    { icon: "📅", label: "Time Span", value: timeSpan },
+                  ].map((stat, i) => (
                 <div
                   key={i}
                   className="p-4 rounded-xl bg-white/5 border border-white/10 hover:border-primary/30 transition-colors"

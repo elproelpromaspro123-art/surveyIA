@@ -2,6 +2,7 @@ import { users, surveyResponses, type User, type InsertUser, type InsertSurveyRe
 import { db } from "./db";
 import { eq } from "drizzle-orm";
 import { mockStorage } from "./mock-storage";
+import FileStorage from "./file-storage";
 
 function log(message: string, source = "storage") {
   const formattedTime = new Date().toLocaleTimeString("en-US", {
@@ -143,4 +144,5 @@ export class MockStorage implements IStorage {
 }
 
 // Use mock storage if no database URL is provided
-export const storage = process.env.DATABASE_URL ? new DatabaseStorage() : new MockStorage();
+// Prefer real DB when configured, otherwise use persistent file storage (not in-memory).
+export const storage = process.env.DATABASE_URL ? new DatabaseStorage() : new FileStorage();

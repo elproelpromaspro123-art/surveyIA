@@ -275,11 +275,18 @@ export default function Profile() {
             transition={{ duration: 0.5, delay: 0.2 }}
             className="grid md:grid-cols-3 gap-4"
           >
-            {[
-              { icon: "📊", label: "Profile Completeness", value: "85%" },
-              { icon: "🔄", label: "Updates", value: `${Math.floor(Math.random() * 50)}` },
-              { icon: "⏰", label: "Last Updated", value: "Just now" },
-            ].map((stat, i) => (
+            {(() => {
+              const filled = [formData.age, formData.occupation, formData.location, formData.tone, formData.interests]
+                .filter(v => v && String(v).trim() !== "").length;
+              const total = 5;
+              const completeness = Math.round((filled / total) * 100) + "%";
+              const updates = user && (user.updatedAt ? 1 : 0);
+
+              return [
+                { icon: "📊", label: "Profile Completeness", value: completeness },
+                { icon: "🔄", label: "Updates", value: updates ?? 0 },
+                { icon: "⏰", label: "Last Updated", value: user?.updatedAt ? new Date(user.updatedAt).toLocaleString() : "Just now" },
+              ].map((stat, i) => (
               <div
                 key={i}
                 className="p-4 rounded-xl bg-white/5 border border-white/10 hover:border-primary/30 transition-colors"
@@ -288,7 +295,8 @@ export default function Profile() {
                 <p className="text-xs text-muted-foreground mb-1">{stat.label}</p>
                 <p className="text-lg font-bold text-white">{stat.value}</p>
               </div>
-            ))}
+              ));
+            })()}
           </motion.div>
         </div>
       </main>

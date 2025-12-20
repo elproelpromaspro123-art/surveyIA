@@ -72,7 +72,8 @@ export default function Dashboard() {
     let stepIndex = 0;
     const interval = setInterval(() => {
       if (stepIndex < simulatedSteps.length) {
-        setLogs(prev => [...prev, simulatedSteps[stepIndex]]);
+        const step = simulatedSteps[stepIndex];
+        if (step && step.trim()) setLogs(prev => [...prev, step]);
         stepIndex++;
       }
     }, 500);
@@ -86,6 +87,29 @@ export default function Dashboard() {
       clearInterval(interval);
       setLogs(prev => [...prev, "✅ Response generated successfully."]);
       
+      // Save full response to localStorage so history/chat is persistent without a DB
+      try {
+        const key = `surveyia_history_user_${userId}`;
+        const existing = JSON.parse(localStorage.getItem(key) || "[]");
+        const entry = {
+          id: Date.now(),
+          question,
+          answer: result.answer,
+          modelUsed: result.modelUsed || 'local-model',
+          status: 'completed',
+          createdAt: new Date().toISOString(),
+        };
+        existing.unshift(entry);
+        localStorage.setItem(key, JSON.stringify(existing));
+
+        // Open the chat view in history for the new entry
+        const params = new URLSearchParams();
+        params.set('open', String(entry.id));
+        window.location.href = `/history?${params.toString()}`;
+      } catch (e) {
+        // ignore localStorage errors
+      }
+
       setTimeout(() => setShowLogs(false), 2000);
     } catch (error) {
       clearInterval(interval);

@@ -310,6 +310,36 @@ export async function registerRoutes(
     }
   });
 
+  /**
+   * PATCH /api/users/:id/profile
+   * Backward-compatible endpoint for client `updateProfile` route
+   */
+  app.patch("/api/users/:id/profile", requireAuthMiddleware, async (req, res) => {
+    try {
+      const userId = Number(req.params.id);
+
+      // Users can only update their own profile
+      if (userId !== Number(req.userId)) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+
+      const { demographics, preferences, language } = req.body;
+
+      if (language) {
+        await storage.updateUserLanguage(userId, language);
+      }
+
+      if (demographics || preferences) {
+        await storage.updateUserProfile(userId, demographics || {}, preferences || {});
+      }
+
+      const user = await storage.getUser(userId);
+      res.json(user);
+    } catch (err) {
+      res.status(500).json({ message: "Failed to update profile" });
+    }
+  });
+
   // ==================== SURVEY ROUTES ====================
 
   /**
