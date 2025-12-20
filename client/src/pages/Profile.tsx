@@ -280,12 +280,13 @@ export default function Profile() {
                 .filter(v => v && String(v).trim() !== "").length;
               const total = 5;
               const completeness = Math.round((filled / total) * 100) + "%";
-              const updates = user && (user.updatedAt ? 1 : 0);
+              // `updatedAt` may not be present in the typed user shape — guard via any
+              const updates = user && ((user as any).updatedAt ? 1 : 0);
 
               return [
                 { icon: "📊", label: "Profile Completeness", value: completeness },
                 { icon: "🔄", label: "Updates", value: updates ?? 0 },
-                { icon: "⏰", label: "Last Updated", value: user?.updatedAt ? new Date(user.updatedAt).toLocaleString() : "Just now" },
+                { icon: "⏰", label: "Last Updated", value: (user && (user as any).updatedAt) ? new Date((user as any).updatedAt).toLocaleString() : (user?.createdAt ? new Date(user.createdAt).toLocaleString() : "Just now") },
               ].map((stat, i) => (
               <div
                 key={i}

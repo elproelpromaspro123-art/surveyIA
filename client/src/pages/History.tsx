@@ -298,37 +298,43 @@ export default function History() {
               className="grid md:grid-cols-3 gap-4"
             >
               {(() => {
-                  const total = responses.length;
-                  const successful = responses.filter((r: any) => r.status === 'completed').length;
-                  // compute time span in days
-                  let timeSpan = '0 days';
-                  try {
-                    const dates = responses.map((r: any) => new Date(r.createdAt).getTime()).filter(Boolean).sort();
-                    if (dates.length >= 2) {
-                      const diffMs = Math.abs(dates[dates.length - 1] - dates[0]);
-                      const diffDays = Math.max(1, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
-                      timeSpan = `${diffDays} days`;
-                    } else if (dates.length === 1) {
-                      timeSpan = `1 day`;
-                    }
-                  } catch (e) {
-                    timeSpan = 'N/A';
+                const total = responses.length;
+                const successful = responses.filter((r: any) => r.status === 'completed').length;
+                // compute time span in days
+                let timeSpan = '0 days';
+                try {
+                  const dates = responses
+                    .map((r: any) => new Date(r.createdAt).getTime())
+                    .filter(Boolean)
+                    .sort((a: number, b: number) => a - b);
+                  if (dates.length >= 2) {
+                    const diffMs = Math.abs(dates[dates.length - 1] - dates[0]);
+                    const diffDays = Math.max(1, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
+                    timeSpan = `${diffDays} days`;
+                  } else if (dates.length === 1) {
+                    timeSpan = `1 day`;
                   }
+                } catch (e) {
+                  timeSpan = 'N/A';
+                }
 
-                  return [
-                    { icon: "📊", label: "Total Responses", value: total },
-                    { icon: "✅", label: "Successful", value: successful },
-                    { icon: "📅", label: "Time Span", value: timeSpan },
-                  ].map((stat, i) => (
-                <div
-                  key={i}
-                  className="p-4 rounded-xl bg-white/5 border border-white/10 hover:border-primary/30 transition-colors"
-                >
-                  <span className="text-2xl block mb-2">{stat.icon}</span>
-                  <p className="text-xs text-muted-foreground mb-1">{stat.label}</p>
-                  <p className="text-xl font-bold text-white">{stat.value}</p>
-                </div>
-              ))}
+                const stats = [
+                  { icon: "📊", label: "Total Responses", value: total },
+                  { icon: "✅", label: "Successful", value: successful },
+                  { icon: "📅", label: "Time Span", value: timeSpan },
+                ];
+
+                return stats.map((stat, i) => (
+                  <div
+                    key={i}
+                    className="p-4 rounded-xl bg-white/5 border border-white/10 hover:border-primary/30 transition-colors"
+                  >
+                    <span className="text-2xl block mb-2">{stat.icon}</span>
+                    <p className="text-xs text-muted-foreground mb-1">{stat.label}</p>
+                    <p className="text-xl font-bold text-white">{stat.value}</p>
+                  </div>
+                ));
+              })()}
             </motion.div>
           )}
         </div>
