@@ -167,7 +167,7 @@ export default function Profile() {
                         value={formData.age}
                         onChange={(e) => handleChange('age', e.target.value)}
                         placeholder="e.g., 28"
-                        className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/30 text-white placeholder:text-white/30 transition-all"
+                        className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 hover:border-primary/30 hover:bg-white/10 focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/30 text-white placeholder:text-white/30 transition-all"
                       />
                     </div>
 
@@ -181,7 +181,7 @@ export default function Profile() {
                         value={formData.occupation}
                         onChange={(e) => handleChange('occupation', e.target.value)}
                         placeholder="e.g., Software Engineer"
-                        className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/30 text-white placeholder:text-white/30 transition-all"
+                        className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 hover:border-primary/30 hover:bg-white/10 focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/30 text-white placeholder:text-white/30 transition-all"
                       />
                     </div>
 
@@ -195,7 +195,7 @@ export default function Profile() {
                         value={formData.location}
                         onChange={(e) => handleChange('location', e.target.value)}
                         placeholder="e.g., San Francisco, USA"
-                        className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/30 text-white placeholder:text-white/30 transition-all"
+                        className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 hover:border-primary/30 hover:bg-white/10 focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/30 text-white placeholder:text-white/30 transition-all"
                       />
                     </div>
                   </div>
@@ -222,13 +222,19 @@ export default function Profile() {
                     <select
                       value={formData.tone}
                       onChange={(e) => handleChange('tone', e.target.value)}
-                      className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:border-secondary/50 focus:outline-none focus:ring-2 focus:ring-secondary/30 text-white transition-all"
+                      className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 hover:border-secondary/30 hover:bg-white/10 focus:border-secondary/50 focus:outline-none focus:ring-2 focus:ring-secondary/30 text-white placeholder:text-white/30 transition-all appearance-none cursor-pointer"
+                      style={{
+                        backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23e9d5ff' d='M6 9L1 4h10z'/%3E%3C/svg%3E")`,
+                        backgroundRepeat: 'no-repeat',
+                        backgroundPosition: 'right 1rem center',
+                        paddingRight: '2.5rem',
+                      }}
                     >
-                      <option value="Professional">Professional</option>
-                      <option value="Casual">Casual</option>
-                      <option value="Technical">Technical</option>
-                      <option value="Creative">Creative</option>
-                      <option value="Academic">Academic</option>
+                      <option value="Professional" className="bg-slate-900 text-white">Professional</option>
+                      <option value="Casual" className="bg-slate-900 text-white">Casual</option>
+                      <option value="Technical" className="bg-slate-900 text-white">Technical</option>
+                      <option value="Creative" className="bg-slate-900 text-white">Creative</option>
+                      <option value="Academic" className="bg-slate-900 text-white">Academic</option>
                     </select>
                   </div>
 
@@ -242,7 +248,7 @@ export default function Profile() {
                       onChange={(e) => handleChange('interests', e.target.value)}
                       placeholder="e.g., AI, Web Development, Data Science (comma-separated)"
                       rows={5}
-                      className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:border-secondary/50 focus:outline-none focus:ring-2 focus:ring-secondary/30 text-white placeholder:text-white/30 transition-all resize-none"
+                      className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 hover:border-secondary/30 hover:bg-white/10 focus:border-secondary/50 focus:outline-none focus:ring-2 focus:ring-secondary/30 text-white placeholder:text-white/30 transition-all resize-none"
                     />
                   </div>
 
