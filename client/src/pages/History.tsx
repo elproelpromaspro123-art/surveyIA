@@ -192,8 +192,8 @@ export default function History() {
       <Navigation />
       <MobileNav />
 
-      <main className="md:ml-64 p-4 md:p-8 lg:p-12 flex-1 flex items-center justify-center">
-        <div className="max-w-4xl mx-auto space-y-8 w-full">
+      <main className={`md:ml-64 p-4 md:p-8 lg:p-12 flex-1 ${isEmpty ? 'flex items-center justify-center' : ''}`}>
+        <div className={`max-w-4xl mx-auto space-y-8 ${isEmpty ? 'w-full' : ''}`}>
           
           {/* HEADER */}
           <motion.header 
