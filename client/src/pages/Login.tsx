@@ -3,6 +3,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useLocation } from "wouter";
 import { Mail, Lock, Eye, EyeOff } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useTranslate } from "@/hooks/useTranslate";
 
 declare global {
   interface Window {
@@ -22,6 +23,7 @@ export default function Login() {
   const [, navigate] = useLocation();
   const { isAuthenticated, loginWithGoogle } = useAuth();
   const { toast } = useToast();
+  const { t } = useTranslate();
 
   const [isSignUp, setIsSignUp] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -31,6 +33,15 @@ export default function Login() {
     confirmPassword: "",
   });
   const [isLoading, setIsLoading] = useState(false);
+
+  // Get preferred language from browser or localStorage
+  const getPreferredLanguage = () => {
+    const stored = localStorage.getItem('preferred_language');
+    if (stored) return stored;
+    const browserLang = (navigator.language || 'es').split('-')[0];
+    return browserLang === 'en' ? 'en' : 'es';
+  };
+  const preferredLanguage = getPreferredLanguage();
 
   // Redirect if already authenticated
   useEffect(() => {
@@ -109,7 +120,7 @@ export default function Login() {
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Por favor completa todos los campos",
+        description: t("error_completing_fields"),
       });
       return;
     }
@@ -118,7 +129,7 @@ export default function Login() {
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Las contraseñas no coinciden",
+        description: t("error_passwords_mismatch"),
       });
       return;
     }
@@ -127,7 +138,7 @@ export default function Login() {
       toast({
         variant: "destructive",
         title: "Error",
-        description: "La contraseña debe tener al menos 6 caracteres",
+        description: t("error_password_length"),
       });
       return;
     }
@@ -140,7 +151,7 @@ export default function Login() {
         body: JSON.stringify({
           username: formData.email,
           password: formData.password,
-          language: "es",
+          language: preferredLanguage,
         }),
       });
 
@@ -166,8 +177,8 @@ export default function Login() {
       }
 
       toast({
-        title: "¡Cuenta creada!",
-        description: "Tu cuenta ha sido registrada correctamente",
+        title: "✅ Account Created",
+        description: t("success_account_created"),
       });
 
       // Wait a moment for session to be established before navigating
@@ -177,7 +188,7 @@ export default function Login() {
       toast({
         variant: "destructive",
         title: "Error",
-        description: error.message || "Error en el registro",
+        description: error.message || t("error_registration"),
       });
     } finally {
       setIsLoading(false);
@@ -191,7 +202,7 @@ export default function Login() {
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Por favor completa todos los campos",
+        description: t("error_completing_fields"),
       });
       return;
     }
@@ -209,12 +220,12 @@ export default function Login() {
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.message || "Error en la autenticación");
+        throw new Error(error.message || t("error_login"));
       }
 
       toast({
-        title: "¡Éxito!",
-        description: "Has iniciado sesión correctamente",
+        title: "✅ Success",
+        description: t("success_login"),
       });
 
       // Wait a moment for session to be established before navigating
@@ -224,7 +235,7 @@ export default function Login() {
       toast({
         variant: "destructive",
         title: "Error",
-        description: error.message || "Error al iniciar sesión",
+        description: error.message || t("error_login"),
       });
     } finally {
       setIsLoading(false);
@@ -244,30 +255,12 @@ export default function Login() {
             SurveyIA
           </h1>
           <p className="text-muted-foreground text-sm">
-            {isSignUp ? "Crea una cuenta para comenzar" : "Inicia sesión en tu cuenta"}
+            {isSignUp ? t("signup_title") : t("login_title")}
           </p>
         </div>
 
         {/* Card */}
         <div className="glass-card rounded-2xl p-8 border border-white/10 space-y-8 shadow-xl">
-          {/* Google OAuth */}
-          <div>
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">
-              Opción rápida
-            </p>
-            <div id="google-signin-button" className="flex justify-center" aria-label="Google sign in" />
-          </div>
-
-          {/* Divider */}
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-white/10" />
-            </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="px-2 bg-background text-muted-foreground">O</span>
-            </div>
-          </div>
-
           {/* Email/Password Form */}
           <form
             onSubmit={
@@ -278,7 +271,7 @@ export default function Login() {
             {/* Email */}
             <div className="space-y-2">
               <label className="text-sm font-medium text-white/80 block">
-                Email
+                {t("email")}
               </label>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -295,7 +288,7 @@ export default function Login() {
             {/* Password */}
             <div className="space-y-2">
               <label className="text-sm font-medium text-white/80 block">
-                Contraseña
+                {t("password")}
               </label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -326,7 +319,7 @@ export default function Login() {
             {isSignUp && (
               <div className="space-y-2">
                 <label className="text-sm font-medium text-white/80 block">
-                  Confirma contraseña
+                  {t("confirm_password")}
                 </label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -347,11 +340,10 @@ export default function Login() {
             {isSignUp && (
               <div className="mt-4 p-3 bg-red-500/10 border border-red-500/20 rounded-lg">
                 <p className="text-xs text-red-400 font-medium">
-                  ⚠️ RECUERDA BIEN TU CONTRASEÑA - NO HAY FORMA DE RECUPERARLA
+                  {t("password_warning_title")}
                 </p>
                 <p className="text-xs text-red-400/70 mt-1">
-                  No podemos recuperar tu contraseña si la olvidas. Guárdala en
-                  un lugar seguro.
+                  {t("password_warning_desc")}
                 </p>
               </div>
             )}
@@ -365,14 +357,14 @@ export default function Login() {
               {isLoading
                 ? "Procesando..."
                 : isSignUp
-                  ? "Crear cuenta"
-                  : "Iniciar sesión"}
+                  ? t("signup_button")
+                  : t("login_button")}
             </button>
           </form>
 
           {/* Toggle Sign Up / Login */}
           <div className="text-center text-sm text-muted-foreground">
-            {isSignUp ? "¿Ya tienes cuenta?" : "¿No tienes cuenta?"}{" "}
+            {isSignUp ? t("have_account") : t("no_account")}{" "}
             <button
               onClick={() => {
                 setIsSignUp(!isSignUp);
@@ -380,8 +372,26 @@ export default function Login() {
               }}
               className="text-primary hover:text-primary/80 font-semibold transition-colors"
             >
-              {isSignUp ? "Inicia sesión" : "Regístrate"}
+              {isSignUp ? t("toggle_login") : t("toggle_signup")}
             </button>
+          </div>
+
+          {/* Divider */}
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-white/10" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="px-2 bg-background text-muted-foreground">O</span>
+            </div>
+          </div>
+
+          {/* Google OAuth */}
+          <div>
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">
+              {t("quick_access")}
+            </p>
+            <div id="google-signin-button" className="flex justify-center" aria-label="Google sign in" />
           </div>
         </div>
 

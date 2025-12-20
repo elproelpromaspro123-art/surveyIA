@@ -141,12 +141,14 @@ export async function validateGoogleToken(
 
       // Create new user
       isNewUser = true;
+      // Detect language from payload or default to es
+      const userLanguage = (payload.locale as string)?.split('-')[0] || "es";
       user = await storage.createUser({
         username: email || `user_${googleId.slice(0, 8)}`,
         password: `google_${googleId}`, // Placeholder - Google users don't use password
         googleId,
         ipAddress: ip,
-        language: "es",
+        language: userLanguage === 'en' ? 'en' : 'es',
       });
 
       log(`Created new user from Google OAuth: ${user.id}`, "auth-service");
@@ -167,22 +169,39 @@ export async function validateGoogleToken(
 
 /**
  * Middleware to check if IP is authorized
+ * Fallback to cookie-based userId if session not found
  */
 export function requireAuthMiddleware(req: any, res: any, next: any) {
   const ip = getUserIP(req);
   const session = getAuthSessionByIP(ip);
 
-  if (!session) {
-    return res.status(401).json({
-      message: "Not authenticated. Please sign in with Google.",
-    });
+  if (session) {
+    // Session found via IP
+    req.userId = session.userId;
+    req.userIP = ip;
+    return next();
   }
 
-  // Attach to request for later use
-  req.userId = session.userId;
-  req.userIP = ip;
+  // Fallback: Check for userId in cookies
+  if (req.cookies?.userId) {
+    try {
+      const userId = parseInt(req.cookies.userId, 10);
+      if (!isNaN(userId)) {
+        req.userId = userId;
+        req.userIP = ip;
+        // Optionally re-create session from cookie
+        // await createAuthSession(ip, userId);
+        return next();
+      }
+    } catch (e) {
+      // Invalid cookie
+    }
+  }
 
-  next();
+  return res.status(401).json({
+    authenticated: false,
+    message: "Not authenticated. Please sign in.",
+  });
 }
 
 /**

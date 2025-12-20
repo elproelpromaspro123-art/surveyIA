@@ -167,6 +167,14 @@ export async function registerRoutes(
       // Create auth session
       await createAuthSession(ip, user.id);
 
+      // Set secure cookie
+      (res as any).setCookie("userId", String(user.id), {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      });
+
       log(`User registered: ${user.username} (ID: ${user.id})`, "auth");
 
       res.status(201).json({
@@ -202,6 +210,14 @@ export async function registerRoutes(
       // Create auth session
       await createAuthSession(ip, user.id);
 
+      // Set secure cookie
+      (res as any).setCookie("userId", String(user.id), {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      });
+
       log(`User logged in: ${user.username} (ID: ${user.id})`, "auth");
 
       res.json({
@@ -235,6 +251,14 @@ export async function registerRoutes(
         // Create auth session
         await createAuthSession(ip, userId);
 
+        // Set secure cookie
+        (res as any).setCookie("userId", String(userId), {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === "production",
+          sameSite: "lax",
+          maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+        });
+
         res.json({
           userId,
           isNewUser,
@@ -255,11 +279,20 @@ export async function registerRoutes(
 
   /**
    * POST /api/auth/logout
-   * Clear authentication session
+   * Clear authentication session and cookies
    */
   app.post("/api/auth/logout", (req, res) => {
     const ip = getUserIP(req);
     clearAuthSession(ip);
+    
+    // Clear userId cookie
+    (res as any).setCookie("userId", "", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 0, // Expire immediately
+    });
+    
     res.json({ success: true });
   });
 

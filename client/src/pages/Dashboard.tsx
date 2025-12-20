@@ -99,6 +99,7 @@ export default function Dashboard() {
         description: "User ID not found. Please log in again.",
         variant: "destructive",
       });
+      navigate("/");
       return;
     }
 
@@ -213,10 +214,12 @@ export default function Dashboard() {
 
     } catch (error) {
       clearInterval(interval);
-      setLogs(prev => [...prev, "❌ Error generating response"]);
+      const errorMsg = error instanceof Error ? error.message : "Unknown error";
+      setLogs(prev => [...prev, `❌ Error: ${errorMsg}`]);
+      console.error("Generation error:", error);
       toast({
         title: "Generation Failed",
-        description: error instanceof Error ? error.message : "Unknown error",
+        description: errorMsg,
         variant: "destructive",
       });
     }
@@ -266,7 +269,7 @@ export default function Dashboard() {
               <div className="h-12 w-1 bg-gradient-to-b from-primary via-purple-500 to-secondary rounded-full" />
               <div>
                 <p className="text-xs font-bold text-primary uppercase tracking-widest">
-                  {modelStatus?.status?.primaryModel || "Loading..."}
+                  {modelStatus?.status?.primaryModel || modelStatus?.data?.status?.primaryModel || "AI Engine"}
                 </p>
                 <p className="text-xs text-muted-foreground">Advanced AI with intelligent fallback</p>
               </div>

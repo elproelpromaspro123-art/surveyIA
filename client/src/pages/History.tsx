@@ -22,17 +22,22 @@ export default function History() {
   const { toast } = useToast();
   const [expandedId, setExpandedId] = useState<number | null>(null);
 
-  const { data: historyData, isLoading, refetch } = useQuery({
+  const { data: historyData, isLoading, error: historyError, refetch } = useQuery({
     queryKey: ["survey-history", userId],
     queryFn: async () => {
       const response = await fetch("/api/survey/history");
       if (!response.ok) {
+        if (response.status === 401) {
+          throw new Error("Not authenticated");
+        }
         throw new Error("Failed to fetch history");
       }
-      return response.json();
+      const data = await response.json();
+      return data;
     },
     staleTime: 1 * 60 * 1000,
     enabled: !!userId,
+    retry: 2,
   });
 
   // Merge server history with localStorage fallback (localStorage wins when present)
@@ -115,16 +120,59 @@ export default function History() {
     );
   }
 
+  if (historyError) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-foreground font-sans">
+        <Navigation />
+        <MobileNav />
+        <main className="md:ml-64 p-4 md:p-8 lg:p-12 pb-24">
+          <div className="max-w-4xl mx-auto">
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="text-center py-20"
+            >
+              <h1 className="text-2xl font-bold text-red-400 mb-4">Error loading history</h1>
+              <p className="text-muted-foreground mb-6">{historyError.message}</p>
+              <button
+                onClick={() => refetch()}
+                className="px-6 py-2 rounded-lg bg-primary hover:bg-primary/80 text-white font-semibold transition-all"
+              >
+                Try Again
+              </button>
+            </motion.div>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
   // Use local responses when available, otherwise fall back to server responses.
   const serverResponses = historyData?.responses || [];
-  const responses = localResponses.length > 0 ? localResponses : serverResponses.map((r: any, i: number) => ({
-    id: r.id || (Date.now() + i),
-    question: r.question,
-    answer: r.answer,
-    modelUsed: r.modelUsed,
-    status: r.status || 'completed',
-    createdAt: r.createdAt || new Date().toISOString(),
-  }));
+  
+  const mappedServerResponses = serverResponses.map((r: any, i: number) => {
+    try {
+      return {
+        id: r.id || (Date.now() + i),
+        question: r.question || "Unknown question",
+        answer: r.answer || "No response",
+        modelUsed: r.modelUsed || "Unknown",
+        status: r.status || 'completed',
+        createdAt: r.createdAt || new Date().toISOString(),
+      };
+    } catch {
+      return {
+        id: Date.now() + i,
+        question: "Error loading response",
+        answer: "There was an error loading this response",
+        modelUsed: "Unknown",
+        status: 'error',
+        createdAt: new Date().toISOString(),
+      };
+    }
+  });
+
+  const responses = localResponses.length > 0 ? localResponses : mappedServerResponses;
   const isEmpty = responses.length === 0;
 
   // Auto-open item via URL param ?open=<id>

@@ -182,7 +182,7 @@ export function useAuth() {
   const isAuthenticated = sessionQuery.data?.authenticated === true;
   const userId = sessionQuery.data?.userId;
   const username = sessionQuery.data?.username;
-  const language = sessionQuery.data?.language || "es";
+  const language = sessionQuery.data?.language || localStorage.getItem('preferred_language') || "es";
 
   const loginWithGoogle = useCallback(
     async (token: string) => {

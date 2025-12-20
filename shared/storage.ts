@@ -1,6 +1,6 @@
 import { users, surveyResponses, type User, type InsertUser, type InsertSurveyResponse } from "./schema";
 import { db } from "./db";
-import { eq } from "drizzle-orm";
+import { eq, desc } from "drizzle-orm";
 import { mockStorage } from "./mock-storage";
 import FileStorage from "./file-storage";
 
@@ -87,7 +87,7 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(surveyResponses)
       .where(eq(surveyResponses.userId, userId))
-      .orderBy(surveyResponses.createdAt);
+      .orderBy(desc(surveyResponses.createdAt));
     return responses || [];
   }
 
