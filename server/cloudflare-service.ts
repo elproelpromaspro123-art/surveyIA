@@ -67,39 +67,48 @@ export async function generateCloudflareResponse(
 
   // If no explicit tools provided, attach a rich default toolset to maximize capability
   if (!req.tools) {
-    // A conservative but explicit default toolset. These names match common
-    // Cloudflare tool capabilities; account permissions may restrict some tools.
+    // Comprehensive default toolset for maximum capabilities
+    // These tools enable web search, code execution, file handling, and more
     body.tools = [
       {
         name: "web_search",
-        description: "Search the web for current facts and grounding",
-        // optional: example schema for parameters a tool might accept
+        description: "Search the web for current facts, news, and real-time information. Essential for grounding responses with up-to-date data.",
         params: { query: "string", top_k: "number" },
       },
       {
         name: "vision",
-        description: "Image understanding and multimodal reasoning",
+        description: "Advanced image understanding and multimodal reasoning. Analyze images, extract text (OCR), detect objects, and answer visual questions.",
         params: { image_data: "data_url" },
       },
       {
         name: "code_execution",
-        description: "Run and evaluate code for exact calculations",
+        description: "Execute Python code for precise calculations, data analysis, and mathematical problem solving. Perfect for exact answers.",
         params: { language: "string", code: "string" },
       },
       {
         name: "file_tools",
-        description: "Process uploaded files and convert to markdown/text",
+        description: "Process and analyze uploaded files including PDFs, text, images, and documents. Convert to markdown and extract content.",
         params: { file_id: "string" },
       },
       {
         name: "url_context",
-        description: "Provide context from a given URL",
+        description: "Fetch and analyze content from specific URLs. Extract information and context from web pages and documents.",
         params: { url: "string" },
       },
       {
         name: "browser",
-        description: "Browser-like retrieval for JS-enabled pages",
+        description: "Browser automation for JS-enabled pages, dynamic content retrieval, and interactive web page analysis.",
         params: { url: "string", wait_for: "number" },
+      },
+      {
+        name: "data_analysis",
+        description: "Advanced data processing, statistical analysis, and visualization capabilities.",
+        params: { dataset: "string", analysis_type: "string" },
+      },
+      {
+        name: "text_processing",
+        description: "Text analysis, NLP, document parsing, and content extraction from unstructured data.",
+        params: { text: "string", operation: "string" },
       },
     ];
   }
@@ -173,7 +182,53 @@ export async function streamCloudflareResponse(_req: CloudflareRequest) {
     body.image = dataUrl;
     body.image_url = { url: dataUrl };
   }
-  if (_req.tools) body.tools = _req.tools;
+  if (_req.tools) {
+    body.tools = _req.tools;
+  } else {
+    // Comprehensive default toolset for streaming with maximum capabilities
+    body.tools = [
+      {
+        name: "web_search",
+        description: "Search the web for current facts, news, and real-time information. Essential for grounding responses with up-to-date data.",
+        params: { query: "string", top_k: "number" },
+      },
+      {
+        name: "vision",
+        description: "Advanced image understanding and multimodal reasoning. Analyze images, extract text (OCR), detect objects, and answer visual questions.",
+        params: { image_data: "data_url" },
+      },
+      {
+        name: "code_execution",
+        description: "Execute Python code for precise calculations, data analysis, and mathematical problem solving. Perfect for exact answers.",
+        params: { language: "string", code: "string" },
+      },
+      {
+        name: "file_tools",
+        description: "Process and analyze uploaded files including PDFs, text, images, and documents. Convert to markdown and extract content.",
+        params: { file_id: "string" },
+      },
+      {
+        name: "url_context",
+        description: "Fetch and analyze content from specific URLs. Extract information and context from web pages and documents.",
+        params: { url: "string" },
+      },
+      {
+        name: "browser",
+        description: "Browser automation for JS-enabled pages, dynamic content retrieval, and interactive web page analysis.",
+        params: { url: "string", wait_for: "number" },
+      },
+      {
+        name: "data_analysis",
+        description: "Advanced data processing, statistical analysis, and visualization capabilities.",
+        params: { dataset: "string", analysis_type: "string" },
+      },
+      {
+        name: "text_processing",
+        description: "Text analysis, NLP, document parsing, and content extraction from unstructured data.",
+        params: { text: "string", operation: "string" },
+      },
+    ];
+  }
   body.tool_config = { function_calling: { mode: "any" } };
   // Ask Cloudflare to stream if supported
   body.stream = true;
@@ -208,11 +263,11 @@ export async function streamCloudflareResponse(_req: CloudflareRequest) {
     return single();
   }
 
-  async function* gen() {
+  async function* gen(readerInstance: ReadableStreamDefaultReader<Uint8Array>) {
     const decoder = new TextDecoder();
     let buffer = "";
     while (true) {
-      const { value, done } = await reader.read();
+      const { value, done } = await readerInstance.read();
       if (done) break;
       if (value) {
         buffer += decoder.decode(value, { stream: true });
@@ -261,5 +316,5 @@ export async function streamCloudflareResponse(_req: CloudflareRequest) {
     }
   }
 
-  return gen();
+  return gen(reader);
 }

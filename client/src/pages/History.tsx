@@ -114,7 +114,7 @@ export default function History() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center">
+      <div className="h-screen w-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center overflow-hidden">
         <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
       </div>
     );
@@ -122,18 +122,20 @@ export default function History() {
 
   if (historyError) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-foreground font-sans">
+      <div className="h-screen flex flex-col bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-foreground font-sans overflow-hidden">
         <Navigation />
         <MobileNav />
-        <main className="md:ml-64 p-4 md:p-8 lg:p-12 pb-24">
+        <main className="md:ml-64 p-4 md:p-8 lg:p-12 flex-1 overflow-y-auto">
           <div className="max-w-4xl mx-auto">
             <motion.div
               initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
               className="text-center py-20"
             >
-              <h1 className="text-2xl font-bold text-red-400 mb-4">Error loading history</h1>
-              <p className="text-muted-foreground mb-6">{historyError.message}</p>
+              <h1 className="text-2xl font-bold text-red-400 mb-4">Unable to Load History</h1>
+              <p className="text-muted-foreground mb-6">
+                {historyError.message || "There was an error loading your response history. Please try again."}
+              </p>
               <button
                 onClick={() => refetch()}
                 className="px-6 py-2 rounded-lg bg-primary hover:bg-primary/80 text-white font-semibold transition-all"
@@ -186,11 +188,11 @@ export default function History() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-foreground font-sans">
+    <div className="h-screen flex flex-col bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-foreground font-sans overflow-hidden">
       <Navigation />
       <MobileNav />
 
-      <main className="md:ml-64 p-4 md:p-8 lg:p-12 pb-24">
+      <main className="md:ml-64 p-4 md:p-8 lg:p-12 flex-1 overflow-y-auto">
         <div className="max-w-4xl mx-auto space-y-8">
           
           {/* HEADER */}

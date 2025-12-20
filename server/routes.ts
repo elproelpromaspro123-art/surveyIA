@@ -60,12 +60,8 @@ async function generateSurveyResponse(
           mimeType: imageData.mimeType,
           data: imageData.data,
         },
-        tools: [
-          // Enable Cloudflare tools for maximum capability
-          { web_search: { description: "Web grounding and retrieval" } },
-          { vision: { description: "Image understanding" } },
-          { file_tools: { description: "File and markdown processing" } },
-        ],
+        // Let Cloudflare service use default comprehensive toolset
+        // No explicit tools means it will use all available tools
       });
 
       return { text: cfResp.text, model: cfResp.model };
@@ -78,10 +74,8 @@ async function generateSurveyResponse(
         temperature: 0.2,
         maxTokens: 8000,
         includeThinking,
-        tools: [
-          { web_search: { description: "Real-time grounding" } },
-          { code_execution: { description: "Run code for exact answers" } },
-        ],
+        // Let Cloudflare service use default comprehensive toolset
+        // No explicit tools means it will use all available tools
       });
 
       return { text: cfResp.text, model: cfResp.model };

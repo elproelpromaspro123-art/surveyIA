@@ -3,7 +3,7 @@ import { AlertTriangle } from "lucide-react";
 
 export default function NotFound() {
   return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-background text-foreground">
+    <div className="h-screen w-screen flex items-center justify-center bg-background text-foreground overflow-hidden">
       <div className="glass-card p-12 rounded-2xl border border-white/10 text-center max-w-md mx-4">
         <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-6">
           <AlertTriangle className="w-8 h-8 text-red-500" />

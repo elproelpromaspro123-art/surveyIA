@@ -251,11 +251,11 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-foreground font-sans selection:bg-primary/30">
+    <div className="h-screen flex flex-col bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-foreground font-sans selection:bg-primary/30 overflow-hidden">
       <Navigation />
       <MobileNav />
 
-      <main className="md:ml-64 p-4 md:p-8 lg:p-12 pb-24">
+      <main className="md:ml-64 p-4 md:p-8 lg:p-12 flex-1 overflow-y-auto">
         <div className="max-w-5xl mx-auto space-y-8">
           
           {/* HEADER SECTION */}
