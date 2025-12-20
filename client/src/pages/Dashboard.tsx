@@ -16,6 +16,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 
 export default function Dashboard() {
@@ -26,6 +27,7 @@ export default function Dashboard() {
   const [showRateLimitInfo, setShowRateLimitInfo] = useState(false);
   const { toast } = useToast();
   const { userId } = useAuth();
+  const [, navigate] = useLocation();
   
   const generateMutation = useGenerateSurveyResponse();
   const { data: modelStatus } = useModelStatus();
@@ -189,7 +191,7 @@ export default function Dashboard() {
 
                       const params = new URLSearchParams();
                       params.set('open', String(entry.id));
-                      window.location.href = `/history?${params.toString()}`;
+                      navigate(`/history?${params.toString()}`);
                     } catch (e) {
                       // ignore localStorage errors
                     }
