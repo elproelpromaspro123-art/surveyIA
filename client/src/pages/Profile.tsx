@@ -92,7 +92,7 @@ export default function Profile() {
       <Navigation />
       <MobileNav />
 
-      <main className="md:ml-64 p-4 md:p-8 lg:p-12 flex-1 overflow-y-auto">
+      <main className="md:ml-64 p-4 md:p-8 lg:p-12 flex-1">
         <div className="max-w-4xl mx-auto space-y-8">
           
           {/* HEADER */}
