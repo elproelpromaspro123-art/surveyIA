@@ -38,10 +38,11 @@
   body {
     @apply bg-background text-foreground antialiased;
     font-family: 'Inter', sans-serif;
-    background-image: 
+    background-image:
       radial-gradient(at 0% 0%, hsla(262, 83%, 58%, 0.15) 0px, transparent 50%),
       radial-gradient(at 100% 100%, hsla(199, 89%, 48%, 0.15) 0px, transparent 50%);
     background-attachment: fixed;
+    overflow: hidden;
   }
   
   h1, h2, h3, h4, h5, h6 {
