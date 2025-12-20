@@ -3,6 +3,7 @@ import { storage } from "@shared/storage";
 import { api } from "@shared/routes";
 import { z } from "zod";
 import { generateGeminiResponse, streamGeminiResponse, getAvailableModels, getModelStatus } from "./gemini-service";
+import { generateCloudflareResponse, streamCloudflareResponse } from "./cloudflare-service";
 import { getSystemPrompt, t, type Language } from "./prompts-i18n";
 import { getUserIP, canCreateAccountFromIP, createAuthSession, getAuthSessionByIP, validateGoogleToken, requireAuthMiddleware, clearAuthSession } from "./auth-service";
 
@@ -33,15 +34,83 @@ async function generateSurveyResponse(
 }> {
   const systemPrompt = getSystemPrompt(userProfile, language);
 
-  const response = await generateGeminiResponse({
-    userPrompt: question,
-    systemPrompt,
-    includeThinking: true, // Always enable maximum thinking
-    temperature: 0.85, // High temperature for expert-level analysis
-    maxTokens: 8000, // Maximum tokens for comprehensive responses
-  });
+  // Decide which provider/model to use automatically.
+  // Heuristic:
+  // - If the user provides an image, prefer Cloudflare `llama-4-scout-17b-16e-instruct` (multimodal)
+  // - If the question seems reasoning-heavy (short heuristic: contains 'analyze','compare','calculate','why'), prefer Cloudflare `gpt-oss-120b` for heavy reasoning.
+  // - Otherwise, fallback to Gemini models (existing logic)
 
-  return response;
+  const lowerQ = question.toLowerCase();
+  const reasoningKeywords = ["analyze", "compare", "calculate", "why", "explain", "evaluate", "summarize"];
+  const hasReasoning = reasoningKeywords.some((k) => lowerQ.includes(k));
+
+  // If image present in userProfile (client provides image in separate field), use Cloudflare multimodal
+  const imageData = (userProfile && (userProfile.image || userProfile.imageData)) || null;
+
+  try {
+    if (imageData) {
+      const cfResp = await generateCloudflareResponse({
+        prompt: `${systemPrompt}\n\n${question}`,
+        model: "@cf/meta/llama-4-scout-17b-16e-instruct",
+        temperature: 0.15,
+        maxTokens: 8000,
+        includeThinking,
+        imageData: {
+          mimeType: imageData.mimeType,
+          data: imageData.data,
+        },
+        tools: [
+          // Enable Cloudflare tools for maximum capability
+          { web_search: { description: "Web grounding and retrieval" } },
+          { vision: { description: "Image understanding" } },
+          { file_tools: { description: "File and markdown processing" } },
+        ],
+      });
+
+      return { text: cfResp.text, model: cfResp.model };
+    }
+
+    if (hasReasoning) {
+      const cfResp = await generateCloudflareResponse({
+        prompt: `${systemPrompt}\n\n${question}`,
+        model: "@cf/openai/gpt-oss-120b",
+        temperature: 0.2,
+        maxTokens: 8000,
+        includeThinking,
+        tools: [
+          { web_search: { description: "Real-time grounding" } },
+          { code_execution: { description: "Run code for exact answers" } },
+        ],
+      });
+
+      return { text: cfResp.text, model: cfResp.model };
+    }
+
+    // Default: use Gemini flow (existing code)
+    const response = await generateGeminiResponse({
+      userPrompt: question,
+      systemPrompt,
+      includeThinking: true, // Always enable maximum thinking
+      temperature: 0.85, // High temperature for expert-level analysis
+      maxTokens: 8000, // Maximum tokens for comprehensive responses
+    });
+
+    return response;
+  } catch (err) {
+    // If Cloudflare fails, fallback to Gemini
+    try {
+      const response = await generateGeminiResponse({
+        userPrompt: question,
+        systemPrompt,
+        includeThinking: true,
+        temperature: 0.85,
+        maxTokens: 8000,
+      });
+      return response;
+    } catch (error) {
+      throw error;
+    }
+  }
 }
 
 /**
@@ -348,7 +417,7 @@ export async function registerRoutes(
    */
   app.post("/api/survey/generate", requireAuthMiddleware, async (req, res) => {
     try {
-      const { question, includeThinking } = req.body;
+      const { question, includeThinking, image } = req.body;
       const userId = req.userId;
 
       if (!question || typeof question !== "string") {
@@ -368,6 +437,11 @@ export async function registerRoutes(
       );
 
       // Generate response
+      // Attach image if provided in request body so selection logic can use it
+      if (image && typeof image === "object") {
+        (user as any).image = image;
+      }
+
       const { text, model, thinking, usageStats } = await generateSurveyResponse(
         user,
         question,
@@ -405,6 +479,119 @@ export async function registerRoutes(
         message: t("error_generating_response", "es"),
         details: err.message,
       });
+    }
+  });
+
+  /**
+   * POST /api/survey/generate/stream
+   * Stream generation via SSE/streaming fetch
+   */
+  app.post("/api/survey/generate/stream", requireAuthMiddleware, async (req, res) => {
+    try {
+      const { question, includeThinking, image } = req.body;
+      const userId = req.userId;
+
+      if (!question || typeof question !== "string") {
+        return res.status(400).json({ message: "Question required" });
+      }
+
+      const user = await storage.getUser(Number(userId));
+      if (!user) return res.status(404).json({ message: "User not found" });
+
+      const language = (user.language as Language) || "es";
+
+      // Attach image if provided
+      if (image && typeof image === "object") {
+        (user as any).image = image;
+      }
+
+      const lowerQ = question.toLowerCase();
+      const reasoningKeywords = ["analyze", "compare", "calculate", "why", "explain", "evaluate", "summarize"];
+      const hasReasoning = reasoningKeywords.some((k) => lowerQ.includes(k));
+
+      res.setHeader("Content-Type", "text/event-stream");
+      res.setHeader("Cache-Control", "no-cache");
+      res.setHeader("Connection", "keep-alive");
+
+      const send = (data: string) => {
+        res.write(`data: ${JSON.stringify(data)}\n\n`);
+      };
+
+      // If image -> prefer Cloudflare multimodal
+      if ((user as any).image) {
+        const stream = await streamCloudflareResponse({
+          prompt: `${getSystemPrompt(user, language)}\n\n${question}`,
+          model: "@cf/meta/llama-4-scout-17b-16e-instruct",
+          temperature: 0.15,
+          maxTokens: 8000,
+          includeThinking: includeThinking === true,
+          imageData: (user as any).image,
+        });
+
+        for await (const chunk of stream) {
+          send(chunk);
+        }
+
+        send("[DONE]");
+        res.end();
+        return;
+      }
+
+      if (hasReasoning) {
+        const stream = await streamCloudflareResponse({
+          prompt: `${getSystemPrompt(user, language)}\n\n${question}`,
+          model: "@cf/openai/gpt-oss-120b",
+          temperature: 0.2,
+          maxTokens: 8000,
+          includeThinking: includeThinking === true,
+        });
+
+        for await (const chunk of stream) {
+          send(chunk);
+        }
+
+        send("[DONE]");
+        res.end();
+        return;
+      }
+
+      // Fallback: stream Gemini
+      try {
+        const stream = await streamGeminiResponse({
+          userPrompt: question,
+          systemPrompt: getSystemPrompt(user, language),
+          includeThinking: includeThinking === true,
+          temperature: 0.85,
+          maxTokens: 8000,
+        });
+
+        for await (const chunk of stream) {
+          send(chunk);
+        }
+
+        send("[DONE]");
+        res.end();
+        return;
+      } catch (err) {
+        // If streaming Gemini failed, try Cloudflare fallback
+        const stream = await streamCloudflareResponse({
+          prompt: `${getSystemPrompt(user, language)}\n\n${question}`,
+          model: "@cf/openai/gpt-oss-120b",
+          temperature: 0.5,
+          maxTokens: 8000,
+          includeThinking: includeThinking === true,
+        });
+
+        for await (const chunk of stream) {
+          send(chunk);
+        }
+
+        send("[DONE]");
+        res.end();
+        return;
+      }
+    } catch (err: any) {
+      res.status(500).json({ message: "Streaming failed", details: err.message });
     }
   });
 

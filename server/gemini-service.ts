@@ -12,6 +12,8 @@ const GEMINI_MODELS = [
   "gemini-2.0-flash",             // Gemini 2.0 Flash - FREE, 1M context window, multimodal
 ] as const;
 
+export { GEMINI_MODELS };
+
 // Rate limit tracking for models
 interface RateLimitInfo {
   model: string;

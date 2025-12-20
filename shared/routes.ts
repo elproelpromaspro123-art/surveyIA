@@ -53,6 +53,13 @@ export const api = {
       input: z.object({
         question: z.string(),
         userId: z.number(),
+        // Optional image support: data URL or base64 + mimeType
+        image: z
+          .object({
+            mimeType: z.string(),
+            data: z.string(),
+          })
+          .optional(),
       }),
       responses: {
         200: z.object({

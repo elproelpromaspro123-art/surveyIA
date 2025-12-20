@@ -20,6 +20,7 @@ import { useToast } from "@/hooks/use-toast";
 
 export default function Dashboard() {
   const [question, setQuestion] = useState("");
+  const [image, setImage] = useState<{ mimeType: string; data: string } | null>(null);
   const [logs, setLogs] = useState<string[]>([]);
   const [showLogs, setShowLogs] = useState(false);
   const [showRateLimitInfo, setShowRateLimitInfo] = useState(false);
@@ -28,6 +29,57 @@ export default function Dashboard() {
   
   const generateMutation = useGenerateSurveyResponse();
   const { data: modelStatus } = useModelStatus();
+  const [streamingAnswer, setStreamingAnswer] = useState<string | null>(null);
+
+  // Helpers for image paste/upload
+  const readFileAsData = (file: File): Promise<{ mimeType: string; data: string }> =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const result = reader.result as string;
+        // remove data:<mime>;base64, prefix if present
+        const match = result.match(/^data:(.*);base64,(.*)$/s);
+        if (match) {
+          resolve({ mimeType: match[1], data: match[2] });
+        } else {
+          // fallback: assume png
+          const b64 = result.split(",").pop() || "";
+          resolve({ mimeType: file.type || "image/png", data: b64 });
+        }
+      };
+      reader.onerror = (e) => reject(e);
+      reader.readAsDataURL(file);
+    });
+
+  const handlePaste = async (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const items = e.clipboardData.items;
+    if (!items) return;
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      if (item.type.startsWith("image/")) {
+        const file = item.getAsFile();
+        if (file) {
+          const d = await readFileAsData(file);
+          setImage(d);
+          toast({ title: "Image pasted", description: "Image attached to the request" });
+          e.preventDefault();
+          return;
+        }
+      }
+    }
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    const d = await readFileAsData(f);
+    setImage(d);
+    toast({ title: "Image attached", description: f.name });
+  };
+
+  const removeImage = () => {
+    setImage(null);
+  };
 
   const handleGenerate = async () => {
     if (!question.trim()) {
@@ -79,47 +131,87 @@ export default function Dashboard() {
     }, 500);
 
     try {
-      const result = await generateMutation.mutateAsync({
-        userId,
-        question,
-      });
-      
-      clearInterval(interval);
-      setLogs(prev => [...prev, "✅ Response generated successfully."]);
-      
-      // Save full response to localStorage so history/chat is persistent without a DB
-      try {
-        const key = `surveyia_history_user_${userId}`;
-        const existing = JSON.parse(localStorage.getItem(key) || "[]");
-        const entry = {
-          id: Date.now(),
-          question,
-          answer: result.answer,
-          modelUsed: result.modelUsed || 'local-model',
-          status: 'completed',
-          createdAt: new Date().toISOString(),
-        };
-        existing.unshift(entry);
-        localStorage.setItem(key, JSON.stringify(existing));
+      const payload: any = { userId, question };
+      if (image) payload.image = image;
 
-        // Open the chat view in history for the new entry
-        const params = new URLSearchParams();
-        params.set('open', String(entry.id));
-        window.location.href = `/history?${params.toString()}`;
-      } catch (e) {
-        // ignore localStorage errors
+      // Use streaming endpoint for progressive feedback
+      const res = await fetch("/api/survey/generate/stream", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => null);
+        throw new Error(err?.message || "Failed to start streaming");
       }
 
-      setTimeout(() => setShowLogs(false), 2000);
+      const reader = res.body?.getReader();
+      if (!reader) throw new Error("Streaming not supported by the server");
+
+      const decoder = new TextDecoder();
+      let done = false;
+      let buffer = "";
+      let collected = "";
+
+      while (!done) {
+        const { value, done: d } = await reader.read();
+        done = !!d;
+        if (value) {
+          buffer += decoder.decode(value, { stream: true });
+          // SSE-style parsing: split by double newline
+          const parts = buffer.split(/\n\n/);
+          buffer = parts.pop() || "";
+          for (const part of parts) {
+            const lines = part.split(/\n/);
+            for (const line of lines) {
+              if (line.startsWith("data:")) {
+                const payloadText = line.replace(/^data:\s?/, "").trim();
+                try {
+                  const text = JSON.parse(payloadText);
+                  if (text === "[DONE]") {
+                    // finished
+                    setLogs(prev => [...prev, "✅ Response generated successfully."]);
+                    // persist
+                    try {
+                      const key = `surveyia_history_user_${userId}`;
+                      const existing = JSON.parse(localStorage.getItem(key) || "[]");
+                      const entry = {
+                        id: Date.now(),
+                        question,
+                        answer: collected,
+                        modelUsed: 'auto-selected',
+                        status: 'completed',
+                        createdAt: new Date().toISOString(),
+                      };
+                      existing.unshift(entry);
+                      localStorage.setItem(key, JSON.stringify(existing));
+
+                      const params = new URLSearchParams();
+                      params.set('open', String(entry.id));
+                      window.location.href = `/history?${params.toString()}`;
+                    } catch (e) {
+                      // ignore localStorage errors
+                    }
+                    setTimeout(() => setShowLogs(false), 2000);
+                    break;
+                  } else {
+                    // append chunk
+                    collected += text;
+                    setStreamingAnswer(collected);
+                  }
+                } catch (e) {
+                  // not JSON
+                }
+              }
+            }
+          }
+        }
+      }
+
     } catch (error) {
       clearInterval(interval);
       setLogs(prev => [...prev, "❌ Error generating response"]);
-      
-      // Check if rate limited
-      if (error instanceof Error && error.message.includes("rate")) {
-        setShowRateLimitInfo(true);
-      }
-      
       toast({
         title: "Generation Failed",
         description: error instanceof Error ? error.message : "Unknown error",
@@ -129,23 +221,18 @@ export default function Dashboard() {
   };
 
   const copyToClipboard = () => {
-    if (generateMutation.data?.answer) {
-      navigator.clipboard.writeText(generateMutation.data.answer);
-      toast({ 
-        title: "✅ Copied!", 
-        description: "Response copied to clipboard." 
-      });
+    const text = generateMutation.data?.answer ?? streamingAnswer;
+    if (text) {
+      navigator.clipboard.writeText(text);
+      toast({ title: "✅ Copied!", description: "Response copied to clipboard." });
     }
   };
 
   const downloadAsText = () => {
-    if (generateMutation.data?.answer) {
+    const text = generateMutation.data?.answer ?? streamingAnswer;
+    if (text) {
       const element = document.createElement("a");
-      element.setAttribute(
-        "href",
-        "data:text/plain;charset=utf-8," + 
-        encodeURIComponent(generateMutation.data.answer)
-      );
+      element.setAttribute("href", "data:text/plain;charset=utf-8," + encodeURIComponent(text));
       element.setAttribute(
         "download",
         `surveyIA_response_${new Date().toISOString().split('T')[0]}.txt`
@@ -237,9 +324,21 @@ export default function Dashboard() {
                     id="question"
                     value={question}
                     onChange={(e) => setQuestion(e.target.value)}
-                    placeholder="Ask anything and get an AI-powered expert response... e.g., How likely are you to recommend our service? What are the key factors?"
+                    onPaste={handlePaste}
+                    placeholder="Ask anything and get an AI-powered expert response... e.g., How likely are you to recommend our service? What are the key factors? (You can paste images with Ctrl+V)"
                     className="w-full h-48 bg-white/5 border border-white/10 rounded-xl p-4 text-white placeholder:text-white/20 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-transparent transition-all resize-none font-base text-base leading-relaxed"
                   />
+
+                  <div className="mt-3 flex items-center gap-3">
+                    <label className="text-xs text-muted-foreground">Attach image:</label>
+                    <input type="file" accept="image/*" onChange={handleFileChange} />
+                    {image && (
+                      <div className="ml-2 flex items-center gap-2">
+                        <img src={`data:${image.mimeType};base64,${image.data}`} alt="preview" className="w-12 h-12 object-cover rounded-md border" />
+                        <button onClick={removeImage} className="text-xs text-amber-400">Remove</button>
+                      </div>
+                    )}
+                  </div>
                   
                   <div className="mt-6 flex justify-between items-center">
                     <span className="text-xs text-muted-foreground">
@@ -291,7 +390,7 @@ export default function Dashboard() {
             {/* OUTPUT SECTION */}
             <div className="space-y-6">
               <AnimatePresence mode="wait">
-                {generateMutation.data ? (
+                {(generateMutation.data || streamingAnswer) ? (
                   <motion.div
                     key="output"
                     initial={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -305,7 +404,7 @@ export default function Dashboard() {
                       <div className="flex items-center gap-2">
                         <Cpu className="w-4 h-4 text-primary" />
                         <span className="text-xs font-bold text-primary uppercase tracking-wider">
-                          {generateMutation.data.modelUsed}
+                          {generateMutation.data?.modelUsed ?? "streaming"}
                         </span>
                       </div>
                       <div className="flex gap-2">
@@ -330,14 +429,14 @@ export default function Dashboard() {
                     <div className="p-6 space-y-4 max-h-96 overflow-y-auto">
                       <div className="prose prose-invert max-w-none">
                         <p className="text-base leading-relaxed text-white/90 whitespace-pre-wrap">
-                          {generateMutation.data.answer}
+                          {generateMutation.data?.answer ?? streamingAnswer}
                         </p>
                       </div>
                     </div>
 
                     {/* Footer */}
                     <div className="bg-white/5 border-t border-white/5 px-6 py-3 flex justify-between items-center text-xs text-muted-foreground">
-                      <span>✅ Generated & Ready</span>
+                      <span>{generateMutation.data ? "✅ Generated & Ready" : "Streaming..."}</span>
                       <span>High Confidence</span>
                     </div>
                   </motion.div>
