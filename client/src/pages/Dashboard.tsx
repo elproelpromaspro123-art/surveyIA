@@ -280,7 +280,7 @@ export default function Dashboard() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.1 }}
             >
-              <h1 className="text-6xl sm:text-7xl font-black tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-white via-purple-200 to-white mb-4 leading-tight">
+              <h1 className="text-5xl sm:text-6xl md:text-7xl font-black tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-white via-purple-200 to-white mb-4 leading-tight">
                 Survey Response
                 <br />
                 Engine
@@ -331,7 +331,7 @@ export default function Dashboard() {
                     onChange={(e) => setQuestion(e.target.value)}
                     onPaste={handlePaste}
                     placeholder="Ask anything and get an AI-powered expert response... e.g., How likely are you to recommend our service? What are the key factors? (You can paste images with Ctrl+V)"
-                    className="w-full h-48 bg-white/5 border border-white/10 rounded-xl p-4 text-white placeholder:text-white/20 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-transparent transition-all resize-none font-base text-base leading-relaxed"
+                    className="w-full h-36 bg-white/5 border border-white/10 rounded-xl p-4 text-white placeholder:text-white/20 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-transparent transition-all resize-none font-base text-base leading-relaxed"
                   />
 
                   <div className="mt-4 pt-4 border-t border-white/10">
@@ -453,7 +453,7 @@ export default function Dashboard() {
                     </div>
 
                     {/* Content */}
-                    <div className="p-6 space-y-4 max-h-96 overflow-y-auto">
+                    <div className="p-6 space-y-4 max-h-72 overflow-y-auto">
                       <div className="prose prose-invert max-w-none">
                         <p className="text-base leading-relaxed text-white/90 whitespace-pre-wrap">
                           {generateMutation.data?.answer ?? streamingAnswer}

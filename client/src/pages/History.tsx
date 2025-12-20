@@ -42,12 +42,18 @@ export default function History() {
 
   // Merge server history with localStorage fallback (localStorage wins when present)
   const localKey = userId ? `surveyia_history_user_${userId}` : null;
-  let localResponses: any[] = [];
-  try {
-    if (localKey) localResponses = JSON.parse(localStorage.getItem(localKey) || "[]");
-  } catch (e) {
-    localResponses = [];
-  }
+  const [localResponsesState, setLocalResponsesState] = useState<any[]>([]);
+
+  useEffect(() => {
+    try {
+      if (localKey) {
+        const data = JSON.parse(localStorage.getItem(localKey) || "[]");
+        setLocalResponsesState(Array.isArray(data) ? data : []);
+      }
+    } catch (e) {
+      setLocalResponsesState([]);
+    }
+  }, [localKey]);
 
   const handleClearHistory = async () => {
     if (!confirm("¿Estás seguro de que quieres borrar todo el historial? Esta acción no se puede deshacer.")) {
@@ -174,7 +180,7 @@ export default function History() {
     }
   });
 
-  const responses = localResponses.length > 0 ? localResponses : mappedServerResponses;
+  const responses = localResponsesState.length > 0 ? localResponsesState : mappedServerResponses;
   const isEmpty = responses.length === 0;
 
   // Auto-open item via URL param ?open=<id>
